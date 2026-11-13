@@ -24,7 +24,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   <section class="card" aria-label="2人対戦じゃんけんゲーム">
     <p class="eyebrow" id="eyebrow">⛩️ 忍者の里へ ようこそ ⛩️</p>
     <h1 id="title">竹林の道場で<br><span>じゃんけん</span>勝負！</h1>
-    <p class="subtitle" id="subtitle">忍者と真剣勝負！ いざ、じゃん・けん・ぽん！</p>
+    <p class="subtitle" id="subtitle">先に3勝した方が総合優勝！ 引き分けは勝ち数に入りません。</p>
     <nav class="modebar" aria-label="あそびかた"><button class="modebtn selected" data-mode="npc">🥷 忍者と対戦</button><button class="modebtn" data-mode="local">👭 ふたりで対戦</button><button class="modebtn" data-mode="room">⛩️ 部屋コードで招待</button></nav>
     <div class="namebar" aria-label="プレイヤー名"><label>あなたの名前 <input id="playerName" placeholder="名前を入力" maxlength="16" autocomplete="nickname"></label></div>
     <section class="roombox" id="roombox"><p>部屋を作って、招待コードをおともだちに送ろう</p><div class="roomcode" id="roomcode">------</div><button id="makeRoom">部屋を作る</button><button id="shareRoom">招待リンクをコピー</button><p id="roommessage">部屋を作ると招待コードが発行されます。参加する人はコードを入力してね。</p><div><input id="joinCode" maxlength="64" placeholder="招待コード" aria-label="招待コード"><button id="joinRoom">部屋に参加</button></div></section>
@@ -48,7 +48,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
       </div>
       <p class="result" id="result"></p><p class="hint" id="hint">じぶんの てを えらんでね</p>
     </div>
-    <div class="actions"><button class="action" id="next" hidden>二回戦へ ✨</button><button class="action secondary" id="reset">スコアをリセット</button><button class="action secondary" id="music" aria-pressed="false">♫ BGMをながす</button></div>
+    <div class="actions"><button class="action" id="next" hidden>二回戦へ ✨</button><button class="action secondary" id="reset" hidden>スコアをリセット</button><button class="action secondary" id="music" aria-pressed="false">♫ BGMをながす</button></div>
     <p class="footer" id="footer">🎋 竹林の道場で 何度でも勝負！ 🎋</p>
   </section>
 </main>
@@ -57,10 +57,10 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
 (() => {
   const icons={rock:'✊',scissors:'✌️',paper:'🖐️'};
   const handNames={rock:'グー',scissors:'チョキ',paper:'パー'};
-  let roundNo=1, picks=[null,null], scores=[0,0], mode='npc', resolved=false;
+  let roundNo=1, picks=[null,null], scores=[0,0], mode='npc', resolved=false, handsRevealed=false, matchOver=false;
   let peer=null, connection=null, roomRole=null, currentRoom='';
   const status=document.querySelector('#status'), result=document.querySelector('#result'), hint=document.querySelector('#hint');
-  const next=document.querySelector('#next'), players=[document.querySelector('#player1'),document.querySelector('#player2')];
+  const next=document.querySelector('#next'), resetButton=document.querySelector('#reset'), players=[document.querySelector('#player1'),document.querySelector('#player2')];
   const nameInput=document.querySelector('#playerName');
   const savedPlayerName=localStorage.getItem('janken-player-name')||'';
   nameInput.value=savedPlayerName;
@@ -89,7 +89,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   });
   renderNames();
   renderHandLabels();
-  function roundLabel(){return ['一回戦','二回戦','三回戦'][roundNo-1]||'三回戦';}
+  function roundLabel(){return ['一回戦','二回戦','三回戦','四回戦','五回戦','六回戦','七回戦','八回戦','九回戦','十回戦'][roundNo-1]||`${roundNo}回戦`;}
   status.textContent=roundLabel();
   function choose(hand){
     if(resolved)return;
@@ -103,17 +103,18 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   }
   function markSelected(i,hand){players[i].querySelectorAll('.choice').forEach(b=>b.classList.toggle('selected',b.dataset.hand===hand));}
   function renderHandVisibility(){
-    const showAll=resolved;
+    const showAll=handsRevealed;
     const visiblePlayer=mode==='room'?myPlayerIndex():mode==='npc'?0:-1;
     [0,1].forEach(i=>{const show=showAll||i===visiblePlayer;document.querySelector(`#hand${i+1}`).textContent=show&&picks[i]?icons[picks[i]]:'？';});
   }
   function showOnlineResult(data){
     picks=data.picks; scores=data.scores;document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];
     if(data.names)applyRemoteNames(data.names);
-    resolved=true;roundNo=data.round||roundNo;
+    resolved=true;handsRevealed=true;roundNo=data.round||roundNo;matchOver=Boolean(data.matchOver);resetButton.hidden=!matchOver;
     renderHandVisibility();markSelected(0,picks[0]);markSelected(1,picks[1]);
     const a=picks[0],b=picks[1];result.textContent=a===b?'あいこ！':`${playerNames[data.winner]} の かち！🎉`;
-    hint.textContent=`${playerNames[0]}：${handNames[a]}　・　${playerNames[1]}：${handNames[b]}`;status.textContent=roundLabel();next.hidden=false;next.textContent=roundNo<3?`${['','二回戦','三回戦'][roundNo]}へ ✨`:'結果を見る ✨';
+    hint.textContent=`${playerNames[0]}：${handNames[a]}　・　${playerNames[1]}：${handNames[b]}`;status.textContent=roundLabel();next.hidden=matchOver;next.disabled=false;next.textContent=`${roundLabelFor(roundNo+1)}へ ✨`;
+    if(matchOver){const champ=data.winner===-1?null:playerNames[data.winner];result.textContent=champ?`${champ} の3勝！総合優勝！🏆`:'三勝到達';hint.textContent=`最終スコア　${scores[0]} - ${scores[1]}`;}
     document.querySelectorAll('.choice').forEach(button=>button.disabled=true);
   }
   function wireRoomConnection(conn){
@@ -141,25 +142,29 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
       if(data.type==='names'&&roomRole==='guest'){applyRemoteNames(data.names);if(data.scores){scores=data.scores;document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];}}
       if(data.type==='pick'&&roomRole==='host'&&!resolved&&['rock','scissors','paper'].includes(data.hand)){picks[1]=data.hand;renderHandVisibility();if(picks[0])resolve();}
       if(data.type==='result'&&roomRole==='guest')showOnlineResult(data);
-      if(data.type==='next-request'&&roomRole==='host'){beginNextRound();conn.send({type:'next',roundNo,scores,finished:roundNo>=3});}
-      if(data.type==='next'&&roomRole==='guest'){if(Array.isArray(data.scores)){scores=data.scores;document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];}roundNo=data.roundNo||roundNo+1;if(data.finished){result.textContent=scores[0]===scores[1]?'三回戦終了！引き分け♪':`${playerNames[scores[0]>scores[1]?0:1]} の総合勝利！🏆`;hint.textContent=`最終スコア　${scores[0]} - ${scores[1]}`;next.hidden=true;}else resetRound();}
-      if(data.type==='restart-request'&&roomRole==='host'){scores=[0,0];roundNo=1;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();conn.send({type:'restart'});}
-      if(data.type==='restart'&&roomRole==='guest'){scores=[0,0];roundNo=1;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();}
+      if(data.type==='next-request'&&roomRole==='host'&&!matchOver){beginNextRound();conn.send({type:'next',roundNo,scores});}
+      if(data.type==='next'&&roomRole==='guest'&&!matchOver){if(Array.isArray(data.scores)){scores=data.scores;document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];}roundNo=data.roundNo||roundNo+1;resetRound();}
+      if(data.type==='restart-request'&&roomRole==='host'){scores=[0,0];roundNo=1;matchOver=false;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();conn.send({type:'restart'});}
+      if(data.type==='restart'&&roomRole==='guest'){scores=[0,0];roundNo=1;matchOver=false;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();}
     });
     conn.on('close',()=>{connection=null;status.textContent='接続がきれました。部屋コードで入りなおしてね。';document.querySelector('#roommessage').textContent='相手との接続が終了しました。';});
     conn.on('error',()=>{document.querySelector('#roommessage').textContent='接続に失敗しました。コードを確認して、もう一度ためしてね。';});
   }
-  function resetRound(){resolved=false;picks=[null,null];players.forEach((p,i)=>{p.classList.toggle('active',mode==='room'?i===(roomRole==='guest'?1:0):i===0);p.querySelectorAll('.choice').forEach(b=>{b.disabled=mode==='room'&&((roomRole==='guest'&&i===0)||(roomRole==='host'&&i===1));b.classList.remove('selected');});});renderHandVisibility();status.textContent=roundLabel();result.textContent='';hint.textContent=mode==='room'?'相手が手を選ぶまで、何度でも変更できるよ':'それぞれ手を選んでね';next.hidden=true;}
-  function beginNextRound(){if(roundNo>=3){result.textContent=scores[0]===scores[1]?'三回戦終了！引き分け♪':`${playerNames[scores[0]>scores[1]?0:1]} の総合勝利！🏆`;hint.textContent=`最終スコア　${scores[0]} - ${scores[1]}`;next.hidden=true;return;}roundNo++;resetRound();}
+  function resetRound(){resolved=false;handsRevealed=false;picks=[null,null];resetButton.hidden=true;players.forEach((p,i)=>{p.classList.toggle('active',mode==='room'?i===(roomRole==='guest'?1:0):i===0);p.querySelectorAll('.choice').forEach(b=>{b.disabled=mode==='room'&&((roomRole==='guest'&&i===0)||(roomRole==='host'&&i===1));b.classList.remove('selected');});});renderHandVisibility();status.textContent=roundLabel();result.textContent='';hint.textContent=mode==='room'?'相手が手を選ぶまで、何度でも変更できるよ':'それぞれ手を選んでね';next.hidden=true;next.disabled=false;}
+  function beginNextRound(){if(matchOver)return;roundNo++;resetRound();}
+  function roundLabelFor(number){return ['一回戦','二回戦','三回戦','四回戦','五回戦','六回戦','七回戦','八回戦','九回戦','十回戦'][number-1]||`${number}回戦`;}
   function resolve(){
-    if(resolved)return;if(!picks[0]||!picks[1])return;resolved=true;renderHandVisibility();markSelected(0,picks[0]);markSelected(1,picks[1]);
+    if(resolved)return;if(!picks[0]||!picks[1])return;resolved=true;
     document.querySelectorAll('.choice').forEach(b=>b.disabled=true);
     const [a,b]=picks;
     let winner='あいこ！もういっかい♪';
-    if(a!==b){const p1wins=(a==='rock'&&b==='scissors')||(a==='scissors'&&b==='paper')||(a==='paper'&&b==='rock');const i=p1wins?0:1;scores[i]++;document.querySelector(`#score${i+1}`).textContent=scores[i];winner=`${playerNames[i]} の かち！🎉`;}
+    let matchWinner=-1;
+    if(a!==b){const p1wins=(a==='rock'&&b==='scissors')||(a==='scissors'&&b==='paper')||(a==='paper'&&b==='rock');const i=p1wins?0:1;scores[i]++;document.querySelector(`#score${i+1}`).textContent=scores[i];winner=`${playerNames[i]} の かち！🎉`;if(scores[i]>=3){matchOver=true;matchWinner=i;}}
+    handsRevealed=true;renderHandVisibility();markSelected(0,picks[0]);markSelected(1,picks[1]);
     status.textContent=roundLabel();result.textContent=winner;
-    hint.textContent=`${playerNames[0]}：${handNames[a]}　・　${playerNames[1]}：${handNames[b]}`;next.hidden=false;next.textContent=roundNo<3?`${['','二回戦','三回戦'][roundNo]}へ ✨`:'三回戦の結果を見る ✨';
-    if(mode==='room'&&roomRole==='host'&&connection?.open)connection.send({type:'result',round:roundNo,picks,scores,names:playerNames,winner:a===b?-1:((a==='rock'&&b==='scissors')||(a==='scissors'&&b==='paper')||(a==='paper'&&b==='rock'))?0:1});
+    hint.textContent=`${playerNames[0]}：${handNames[a]}　・　${playerNames[1]}：${handNames[b]}`;next.hidden=matchOver;next.disabled=false;next.textContent=`${roundLabelFor(roundNo+1)}へ ✨`;resetButton.hidden=!matchOver;
+    if(matchOver){result.textContent=`${playerNames[matchWinner]} の3勝！総合優勝！🏆`;hint.textContent=`最終スコア　${scores[0]} - ${scores[1]}`;}
+    if(mode==='room'&&roomRole==='host'&&connection?.open)connection.send({type:'result',round:roundNo,picks,scores,names:playerNames,winner:matchWinner>=0?matchWinner:a===b?-1:((a==='rock'&&b==='scissors')||(a==='scissors'&&b==='paper')||(a==='paper'&&b==='rock'))?0:1,matchOver});
   }
   document.querySelectorAll('.choice').forEach(button=>button.addEventListener('click',()=>{
     const playerNumber=Number(button.closest('.player').id.slice(-1));
@@ -173,8 +178,8 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
       if(mode==='npc'&&playerNumber===1)choose(button.dataset.hand);
       else if(mode==='local'&&!resolved){picks[playerNumber-1]=button.dataset.hand;renderHandVisibility();hint.textContent=picks[0]&&picks[1]?'両方の手がそろったよ！':'それぞれ手を選んでね';if(picks[0]&&picks[1])resolve();}
   }));
-  next.addEventListener('click',()=>{if(mode==='room'&&connection?.open){if(roomRole==='host'){beginNextRound();connection.send({type:'next',roundNo,scores,finished:roundNo>=3});}else{connection.send({type:'next-request'});hint.textContent='プレイヤー1が次の回戦を始めるのを待っています';}}else beginNextRound();});
-  document.querySelector('#reset').addEventListener('click',()=>{scores=[0,0];roundNo=1;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();if(mode==='room'&&connection?.open){if(roomRole==='host')connection.send({type:'restart'});else connection.send({type:'restart-request'});}});
+  next.addEventListener('click',()=>{if(mode==='room'&&connection?.open){if(roomRole==='host'){beginNextRound();connection.send({type:'next',roundNo,scores});}else{connection.send({type:'next-request'});next.disabled=true;hint.textContent='プレイヤー1が次の回戦を始めるのを待っています';}}else beginNextRound();});
+  resetButton.addEventListener('click',()=>{if(!matchOver)return;scores=[0,0];roundNo=1;matchOver=false;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';resetRound();if(mode==='room'&&connection?.open){if(roomRole==='host')connection.send({type:'restart'});else connection.send({type:'restart-request'});}});
   document.querySelectorAll('.modebtn[data-mode]').forEach(button=>button.addEventListener('click',()=>{
     mode=button.dataset.mode;document.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('selected',b===button));
     document.querySelector('#roombox').classList.toggle('show',mode==='room');
@@ -183,7 +188,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
       if(connection){connection.close();connection=null;}if(peer){peer.destroy();peer=null;}roomRole=null;
       playerNames[0]=nameInput.value.trim()||'プレイヤー1';playerNames[1]=npc?'忍者':'プレイヤー2';
     }
-    roundNo=1;scores=[0,0];document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';renderNames();renderHandLabels();resetRound();
+    roundNo=1;scores=[0,0];matchOver=false;document.querySelector('#score1').textContent='0';document.querySelector('#score2').textContent='0';renderNames();renderHandLabels();resetRound();
   }));
   document.querySelector('#makeRoom').addEventListener('click',()=>{
     if(!window.Peer){document.querySelector('#roommessage').textContent='通信ライブラリを読み込めません。インターネット接続を確認してね。';return;}
