@@ -25,7 +25,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
     <h1 id="title">竹林の道場で<br><span>じゃんけん</span>勝負！</h1>
     <p class="subtitle" id="subtitle">忍者と真剣勝負！ いざ、じゃん・けん・ぽん！</p>
     <nav class="modebar" aria-label="あそびかた"><button class="modebtn selected" data-mode="npc">🥷 忍者と対戦</button><button class="modebtn" data-mode="local">👭 ふたりで対戦</button><button class="modebtn" data-mode="room">⛩️ 部屋コードで招待</button></nav>
-    <div class="namebar" aria-label="プレイヤー名"><label>プレイヤー1 <input id="name1" value="プレイヤー1" maxlength="16" autocomplete="nickname"></label><label>プレイヤー2 <input id="name2" value="忍者" maxlength="16" autocomplete="nickname"></label></div>
+    <div class="namebar" aria-label="プレイヤー名"><label>あなたの名前 <input id="playerName" placeholder="名前を入力" maxlength="16" autocomplete="nickname"></label></div>
     <section class="roombox" id="roombox"><p>部屋を作って、招待コードをおともだちに送ろう</p><div class="roomcode" id="roomcode">------</div><button id="makeRoom">部屋を作る</button><button id="shareRoom">招待リンクをコピー</button><p id="roommessage">部屋を作ると招待コードが発行されます。参加する人はコードを入力してね。</p><div><input id="joinCode" maxlength="64" placeholder="招待コード" aria-label="招待コード"><button id="joinRoom">部屋に参加</button></div></section>
     <div class="scoreboard" aria-label="スコア">
       <div class="score"><small id="score1label">🥷 プレイヤー1 (P1)</small><strong id="score1">0</strong></div><span class="versus">⚔️ VS ⚔️</span>
@@ -37,12 +37,12 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
         <section class="player active" id="player1">
           <h2>🥷 プレイヤー 1</h2><div class="choices" aria-label="プレイヤー1の手">
             <button class="choice" data-hand="rock" aria-label="グー">✊</button><button class="choice" data-hand="scissors" aria-label="チョキ">✌️</button><button class="choice" data-hand="paper" aria-label="パー">🖐️</button>
-          </div><div class="hand" id="hand1" aria-label="選んだ手">？</div><p class="player-label">あなたの て</p>
+          </div><div class="hand" id="hand1" aria-label="選んだ手">？</div><p class="player-label" id="handLabel1">あなたの て</p>
         </section>
         <section class="player" id="player2">
           <h2>🥷 プレイヤー 2</h2><div class="choices" aria-label="プレイヤー2の手">
             <button class="choice" data-hand="rock" aria-label="グー">✊</button><button class="choice" data-hand="scissors" aria-label="チョキ">✌️</button><button class="choice" data-hand="paper" aria-label="パー">🖐️</button>
-          </div><div class="hand" id="hand2" aria-label="選んだ手">？</div><p class="player-label">あなたの て</p>
+          </div><div class="hand" id="hand2" aria-label="選んだ手">？</div><p class="player-label" id="handLabel2">あいての て</p>
         </section>
       </div>
       <p class="result" id="result"></p><p class="hint" id="hint">じぶんの てを えらんでね</p>
@@ -60,9 +60,12 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   let peer=null, connection=null, roomRole=null, currentRoom='';
   const status=document.querySelector('#status'), result=document.querySelector('#result'), hint=document.querySelector('#hint');
   const next=document.querySelector('#next'), players=[document.querySelector('#player1'),document.querySelector('#player2')];
-  const nameInputs=[document.querySelector('#name1'),document.querySelector('#name2')];
-  let playerNames=[localStorage.getItem('janken-name1')||'プレイヤー1',localStorage.getItem('janken-name2')||'忍者'];
-  nameInputs.forEach((input,i)=>input.value=playerNames[i]);
+  const nameInput=document.querySelector('#playerName');
+  const savedPlayerName=localStorage.getItem('janken-player-name')||'';
+  nameInput.value=savedPlayerName;
+  let playerNames=[savedPlayerName||'プレイヤー1','忍者'];
+  const myPlayerIndex=()=>mode==='room'&&roomRole==='guest'?1:0;
+  function renderHandLabels(){const mine=myPlayerIndex();document.querySelector('#handLabel1').textContent=mine===0?'あなたの て':'あいての て';document.querySelector('#handLabel2').textContent=mine===1?'あなたの て':'あいての て';}
   function renderNames(){
     playerNames=playerNames.map((name,i)=>(name||'').trim().slice(0,16)||(i===0?'プレイヤー1':'プレイヤー2'));
     document.querySelector('#score1label').textContent=`🥷 ${playerNames[0]} (P1)`;
@@ -73,17 +76,18 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   function applyRemoteNames(incoming){
     if(!Array.isArray(incoming)||incoming.length!==2)return;
     playerNames=incoming.map((n,i)=>(String(n||'').trim().slice(0,16)||(i===0?'プレイヤー1':'プレイヤー2')));
-    nameInputs.forEach((input,i)=>input.value=playerNames[i]);renderNames();
+    nameInput.value=playerNames[myPlayerIndex()];renderNames();
   }
-  nameInputs.forEach((input,i)=>input.addEventListener('input',()=>{
-    playerNames[i]=(input.value.trim().slice(0,16)||(i===0?'プレイヤー1':'プレイヤー2'));
-    localStorage.setItem(`janken-name${i+1}`,playerNames[i]);renderNames();
+  nameInput.addEventListener('input',()=>{
+    const i=myPlayerIndex();playerNames[i]=(nameInput.value.trim().slice(0,16)||(i===0?'プレイヤー1':'プレイヤー2'));
+    localStorage.setItem('janken-player-name',playerNames[i]);renderNames();
     if(connection?.open){
-      if(roomRole==='host'&&i===0)connection.send({type:'host-name',name:playerNames[0]});
-      if(roomRole==='guest'&&i===1)connection.send({type:'guest-name',name:playerNames[1]});
+      if(roomRole==='host')connection.send({type:'host-name',name:playerNames[0]});
+      if(roomRole==='guest')connection.send({type:'guest-name',name:playerNames[1]});
     }
-  }));
+  });
   renderNames();
+  renderHandLabels();
   status.textContent=`${playerNames[0]} の ばんです♪`;
   function choose(hand){
     if(turn>2)return;
@@ -109,23 +113,24 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
       mode='room';document.querySelector('#player2 .choices').hidden=false;
       if(roomRole==='guest'){
         turn=2;
-        nameInputs[0].disabled=true;nameInputs[1].disabled=false;playerNames[1]=nameInputs[1].value.trim()||'プレイヤー2';
+        playerNames[1]=nameInput.value.trim()||'プレイヤー2';
         players[0].querySelectorAll('.choice').forEach(b=>b.disabled=true);players[1].querySelectorAll('.choice').forEach(b=>b.disabled=false);players[0].classList.remove('active');players[1].classList.add('active');status.textContent='つながったよ！あなたはP2。手をえらんでね';
         conn.send({type:'join',name:playerNames[1]});
       } else {
         turn=1;
-        nameInputs[0].disabled=false;nameInputs[1].disabled=true;playerNames[0]=nameInputs[0].value.trim()||'プレイヤー1';
+        playerNames[0]=nameInput.value.trim()||'プレイヤー1';
         players[0].querySelectorAll('.choice').forEach(b=>b.disabled=false);players[1].querySelectorAll('.choice').forEach(b=>b.disabled=true);status.textContent='おともだちが参加したよ！あなたはP1です';
         conn.send({type:'welcome',names:playerNames,scores});
       }
       renderNames();
+      renderHandLabels();
       document.querySelector('#roommessage').textContent='オンライン対戦中です。相手の手が届くまで待ってね♪';
     });
     conn.on('data',data=>{
       if(data.type==='welcome'&&roomRole==='guest'){applyRemoteNames(data.names);scores=data.scores||[0,0];document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];}
       if(data.type==='join'&&roomRole==='host'){playerNames[1]=String(data.name||'プレイヤー2').trim().slice(0,16);renderNames();conn.send({type:'names',names:playerNames,scores});}
-      if(data.type==='host-name'&&roomRole==='guest'){playerNames[0]=String(data.name||'プレイヤー1').trim().slice(0,16);nameInputs[0].value=playerNames[0];renderNames();}
-      if(data.type==='guest-name'&&roomRole==='host'){playerNames[1]=String(data.name||'プレイヤー2').trim().slice(0,16);nameInputs[1].value=playerNames[1];renderNames();conn.send({type:'names',names:playerNames,scores});}
+      if(data.type==='host-name'&&roomRole==='guest'){playerNames[0]=String(data.name||'プレイヤー1').trim().slice(0,16);renderNames();}
+      if(data.type==='guest-name'&&roomRole==='host'){playerNames[1]=String(data.name||'プレイヤー2').trim().slice(0,16);renderNames();conn.send({type:'names',names:playerNames,scores});}
       if(data.type==='names'&&roomRole==='guest'){applyRemoteNames(data.names);if(data.scores){scores=data.scores;document.querySelector('#score1').textContent=scores[0];document.querySelector('#score2').textContent=scores[1];}}
       if(data.type==='pick'&&roomRole==='host'&&['rock','scissors','paper'].includes(data.hand)){picks[1]=data.hand;document.querySelector('#hand2').textContent=icons[data.hand];turn=3;resolve();const firstWins=(picks[0]==='rock'&&picks[1]==='scissors')||(picks[0]==='scissors'&&picks[1]==='paper')||(picks[0]==='paper'&&picks[1]==='rock');conn.send({type:'result',picks,scores,names:playerNames,winner:picks[0]===picks[1]?-1:firstWins?0:1});}
       if(data.type==='result'&&roomRole==='guest')showOnlineResult(data);
@@ -162,10 +167,11 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
     mode=button.dataset.mode;document.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('selected',b===button));
     document.querySelector('#roombox').classList.toggle('show',mode==='room');
     const npc=mode==='npc';document.querySelector('#player2 .choices').hidden=npc;
-    nameInputs.forEach(input=>input.disabled=false);
-    if(npc&&!nameInputs[1].value.trim())nameInputs[1].value='忍者';
-    if(mode==='local'&&nameInputs[1].value==='忍者')nameInputs[1].value='プレイヤー2';
-    playerNames=nameInputs.map(input=>input.value.trim());renderNames();next.click();
+    if(mode!=='room'){
+      if(connection){connection.close();connection=null;}if(peer){peer.destroy();peer=null;}roomRole=null;
+      playerNames[0]=nameInput.value.trim()||'プレイヤー1';playerNames[1]=npc?'忍者':'プレイヤー2';
+    }
+    renderNames();renderHandLabels();next.click();
     status.textContent=npc?'忍者と じゃんけんしよう♪':'プレイヤー 1 の ばんです♪';
   }));
   document.querySelector('#makeRoom').addEventListener('click',()=>{
@@ -181,7 +187,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   // ユーザー提供のMP3を控えめな音量でループ再生
   const musicButton=document.querySelector('#music');
   const bgmAudio=document.querySelector('#bgmAudio');
-  bgmAudio.volume=0.25;
+  bgmAudio.volume=0.15;
   async function startMusic(){
     try{await bgmAudio.play();musicButton.textContent='♫ BGMをとめる';musicButton.setAttribute('aria-pressed','true');return true;}
     catch{musicButton.textContent='♫ タップでBGM';musicButton.setAttribute('aria-pressed','false');return false;}
