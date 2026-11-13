@@ -37,12 +37,12 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
         <section class="player active" id="player1">
           <h2>🥷 プレイヤー 1</h2><div class="choices" aria-label="プレイヤー1の手">
             <button class="choice" data-hand="rock" aria-label="グー">✊</button><button class="choice" data-hand="scissors" aria-label="チョキ">✌️</button><button class="choice" data-hand="paper" aria-label="パー">🖐️</button>
-          </div><div class="hand" id="hand1" aria-label="選んだ手">？</div><p class="player-label" id="handLabel1">あなたの て</p>
+          </div><div class="hand" id="hand1" aria-label="選んだ手">？</div><p class="player-label" id="handLabel1">あなたのて</p>
         </section>
         <section class="player" id="player2">
           <h2>🥷 プレイヤー 2</h2><div class="choices" aria-label="プレイヤー2の手">
             <button class="choice" data-hand="rock" aria-label="グー">✊</button><button class="choice" data-hand="scissors" aria-label="チョキ">✌️</button><button class="choice" data-hand="paper" aria-label="パー">🖐️</button>
-          </div><div class="hand" id="hand2" aria-label="選んだ手">？</div><p class="player-label" id="handLabel2">あいての て</p>
+          </div><div class="hand" id="hand2" aria-label="選んだ手">？</div><p class="player-label" id="handLabel2">あいてのて</p>
         </section>
       </div>
       <p class="result" id="result"></p><p class="hint" id="hint">じぶんの てを えらんでね</p>
@@ -65,7 +65,7 @@ body.japan{--ink:#5b4038;background:radial-gradient(ellipse at 12% 14%,#fff8eb 0
   nameInput.value=savedPlayerName;
   let playerNames=[savedPlayerName||'プレイヤー1','忍者'];
   const myPlayerIndex=()=>mode==='room'&&roomRole==='guest'?1:0;
-  function renderHandLabels(){const mine=myPlayerIndex();document.querySelector('#handLabel1').textContent=mine===0?'あなたの て':'あいての て';document.querySelector('#handLabel2').textContent=mine===1?'あなたの て':'あいての て';}
+  function renderHandLabels(){const mine=myPlayerIndex();document.querySelector('#handLabel1').textContent=mine===0?'あなたのて':'あいてのて';document.querySelector('#handLabel2').textContent=mine===1?'あなたのて':'あいてのて';}
   function renderNames(){
     playerNames=playerNames.map((name,i)=>(name||'').trim().slice(0,16)||(i===0?'プレイヤー1':'プレイヤー2'));
     document.querySelector('#score1label').textContent=`🥷 ${playerNames[0]} (P1)`;
