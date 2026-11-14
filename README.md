@@ -1,6 +1,6 @@
 # 忍者の里 じゃんけん
 
-公開ページ: https://stilluzmurder-cpu.github.io/janken/
+公開ページ: https://madaigames.github.io/janken/
 
 ## あそびかた
 
